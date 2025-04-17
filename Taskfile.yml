@@ -1,0 +1,217 @@
+# https://taskfile.dev
+---
+version: '3'
+
+vars:
+  ROLES:
+    sh: |
+      roles=""
+      for dir in roles/*; do
+        [ -d "$dir" ] || continue
+        role=$(basename "$dir")
+        roles="${roles:+$roles, }$role"
+      done
+      echo "$roles"
+  VERSION:
+    sh: grep '^version:' galaxy.yml | awk '{print $2}'
+  NAMESPACE:
+    sh: grep '^namespace:' galaxy.yml | awk '{print $2}'
+  COLLECTION:
+    sh: grep '^name:' galaxy.yml | awk '{print $2}'
+  ARCHIVE: "{{.NAMESPACE}}-{{.COLLECTION}}-{{.VERSION}}.tar.gz"
+  BUILD_DIR: build
+
+tasks:
+  validate:role:
+    cmds:
+      - |
+        if ! echo "{{.ROLES}}" | tr ', ' '\n' | grep -Fxq "{{.ROLE}}"; then
+          echo "invalid role '{{.ROLE}}'. Must be one of: {{.ROLES}}"
+          exit 1
+        fi
+    silent: true
+    internal: true
+
+  validate:tools:
+    cmds:
+      - |
+        for cmd in {{.TOOLS}}; do
+          if ! command -v $cmd >/dev/null 2>&1; then
+            echo "Error: $cmd is not installed." >&2
+            exit 1
+          fi
+        done
+    silent: true
+    internal: true
+    run: when_changed
+    requires:
+      vars:
+        - TOOLS
+
+  ## INFO
+
+  info:
+    cmds:
+      - echo {{.NAMESPACE}}.{{.COLLECTION}} {{.VERSION}}
+    silent: true
+
+  info:version:
+    cmds:
+      - echo {{.VERSION}}
+    silent: true
+
+  info:roles:
+    cmds:
+      - echo {{.ROLES}}
+    silent: true
+
+  ## TEST
+
+  lint:
+    cmds:
+      - task: validate:tools
+        vars: {TOOLS: ansible-lint yamllint}
+      - ansible-lint
+      - yamllint .
+
+  test:collection:
+    cmds:
+      - task: validate:tools
+        vars: {TOOLS: molecule ansible-test}
+      - task: generate:roles:defaults
+      - ansible-test sanity --docker
+      - molecule test --all
+
+  test:role:
+    label: test:role:{{.ROLE}}
+    dir: "./roles/{{.ROLE}}"
+    deps:
+      - task: generate:role:defaults
+        vars: {ROLE: '{{.ROLE}}'}
+    cmds:
+      - task: validate:tools
+        vars: {TOOLS: molecule}
+      - task: validate:role
+      - cmd: |
+          has_tests=false
+          if [ -f "molecule/default/molecule.yml" ]; then
+            echo "running default scenario for {{.ROLE}}"
+            molecule test -s default
+            has_tests=true
+          fi
+
+          for scenario in molecule/*; do
+            name=$(basename "$scenario")
+            [ "$name" = "default" ] && continue
+            if [ -f "$scenario/molecule.yml" ]; then
+              echo "running scenario '$name' for {{.ROLE}}"
+              molecule test -s "$name"
+              has_tests=true
+            fi
+          done
+
+          if [ "$has_tests" = false ]; then
+            echo "no molecule scenarios found for {{.ROLE}}. Skipping."
+          fi
+        silent: true
+    requires:
+      vars:
+        - ROLE
+
+  test:roles:
+    cmds:
+      - for: {var: ROLES, split: ', '}
+        task: test:role
+        vars: {ROLE: "{{.ITEM}}"}
+
+  test:
+    cmds:
+      - task: lint
+      - task: test:collection
+      - task: test:roles
+
+  ## GENERATE
+
+  generate:role:defaults:
+    label: generate:role:{{.ROLE}}:defaults
+    run: when_changed
+    cmds:
+      - task: validate:role
+      - task: validate:tools
+        vars: {TOOLS: aar-doc}
+      - cmd: aar-doc "./roles/{{.ROLE}}" defaults
+    requires:
+      vars:
+        - ROLE
+
+  generate:role:docs:
+    label: generate:role:{{.ROLE}}:docs
+    run: when_changed
+    cmds:
+      - task: validate:tools
+        vars: {TOOLS: aar-doc}
+      - task: validate:role
+      - cmd: aar-doc --output-mode replace "./roles/{{.ROLE}}" markdown
+    requires:
+      vars:
+        - ROLE
+
+  generate:role:
+    run: when_changed
+    cmds:
+      - task: validate:role
+      - task: generate:role:defaults
+      - task: generate:role:docs
+    requires:
+      vars:
+        - ROLE
+
+  generate:roles:defaults:
+    run: once
+    cmds:
+      - for: {var: ROLES, split: ', '}
+        task: generate:role:defaults
+        vars: {ROLE: "{{.ITEM}}"}
+
+  generate:roles:docs:
+    run: once
+    cmds:
+      - for: {var: ROLES, split: ', '}
+        task: generate:role:docs
+        vars: {ROLE: "{{.ITEM}}"}
+
+  generate:roles:
+    run: once
+    cmds:
+      - task: generate:roles:defaults
+      - task: generate:roles:docs
+
+  ## BUILD
+
+  build:
+    cmds:
+      - task: test
+      - task: build:notest
+
+  build:notest:
+    cmds:
+      - task: validate:tools
+        vars: {TOOLS: ansible-galaxy}
+      - ansible-galaxy collection build --force --output-path {{.BUILD_DIR}}
+    generates:
+      - "{{.ARCHIVE}}"
+
+  ## PUBLISH
+
+  publish:
+    cmds:
+      - task: build
+      - task: pubish:nobuild
+
+  publish:nobuild:
+    cmds:
+      - task: validate:tools
+        vars: {TOOLS: ansible-galaxy}
+      - >-
+        ansible-galaxy collection publish
+        {{.BUILD_DIR}}/{{.ARCHIVE}}
