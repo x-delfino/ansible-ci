@@ -40,9 +40,6 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          cache-dependency-path: >-
-            '${{ env.COLLECTION_DIR }}/automation/requirements.txt'
-          cache: 'pip'
           python-version: '3.10'
 
       - name: Install Python dependencies
