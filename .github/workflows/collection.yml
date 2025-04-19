@@ -28,7 +28,7 @@ jobs:
     steps:
       - name: Set working directory
         run: |
-          namespace=${{ inputs.namespace }}/${{ inputs.collection }}"
+          namespace="${{ inputs.namespace }}/${{ inputs.collection }}"
           echo "COLLECTION_DIR=ansible_collections/$namespace" >> $GITHUB_ENV
 
       - name: Checkout Repo
