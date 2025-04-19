@@ -9,7 +9,7 @@ vars:
       for dir in roles/*; do
         [ -d "$dir" ] || continue
         role=$(basename "$dir")
-        roles="${roles:+$roles, }$role"
+        roles="${roles:+$roles }$role"
       done
       echo "$roles"
   VERSION:
@@ -25,7 +25,10 @@ tasks:
   validate:role:
     cmds:
       - |
-        if ! echo "{{.ROLES}}" | tr ', ' '\n' | grep -Fxq "{{.ROLE}}"; then
+        if [ "{{ .ROLE }}" == "" ]; then
+          echo "No role provided"
+          exit 1
+        elif ! echo "{{.ROLES}}" | tr ', ' '\n' | grep -Fxq "{{.ROLE}}"; then
           echo "invalid role '{{.ROLE}}'. Must be one of: {{.ROLES}}"
           exit 1
         fi
@@ -120,7 +123,7 @@ tasks:
 
   test:roles:
     cmds:
-      - for: {var: ROLES, split: ', '}
+      - for: {var: ROLES}
         task: test:role
         vars: {ROLE: "{{.ITEM}}"}
 
@@ -169,14 +172,14 @@ tasks:
   generate:roles:defaults:
     run: once
     cmds:
-      - for: {var: ROLES, split: ', '}
+      - for: {var: ROLES}
         task: generate:role:defaults
         vars: {ROLE: "{{.ITEM}}"}
 
   generate:roles:docs:
     run: once
     cmds:
-      - for: {var: ROLES, split: ', '}
+      - for: {var: ROLES}
         task: generate:role:docs
         vars: {ROLE: "{{.ITEM}}"}
 
@@ -185,6 +188,10 @@ tasks:
     cmds:
       - task: generate:roles:defaults
       - task: generate:roles:docs
+
+  generate:
+    cmds:
+      - task: generate:roles
 
   ## BUILD
 
@@ -195,6 +202,7 @@ tasks:
 
   build:notest:
     cmds:
+      - task: generate
       - task: validate:tools
         vars: {TOOLS: ansible-galaxy}
       - ansible-galaxy collection build --force --output-path {{.BUILD_DIR}}
