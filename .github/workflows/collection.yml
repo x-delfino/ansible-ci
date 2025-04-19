@@ -10,6 +10,15 @@ name: Ansible Collection CI
       run_build:
         type: boolean
         default: false
+      namespace:
+        type: string
+        required: true
+      collection:
+        type: string
+        required: true
+    secrets:
+      ANSIBLE_GALAXY_TOKEN:
+        required: false
 
 jobs:
   ci:
@@ -17,9 +26,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Set working directory
+        run: |
+          namespace=${{ inputs.namespace }}/${{ inputs.collection }}"
+          echo "COLLECTION_DIR=ansible_collections/$namespace" >> $GITHUB_ENV
+
       - name: Checkout Repo
         uses: actions/checkout@v4
         with:
+          path: ${{ env.COLLECTION_DIR }}
           submodules: recursive
 
       - name: Set up Python
@@ -30,22 +45,27 @@ jobs:
           python-version: '3.10'
 
       - name: Install Python dependencies
+        working-directory: ${{ env.COLLECTION_DIR }}
         run: pip install -r './automation/requirements.txt'
 
       - name: Install Task
         uses: arduino/setup-task@v2
 
       - name: Run Lint
+        working-directory: ${{ env.COLLECTION_DIR }}
         run: task lint
 
       - name: Run Tests
+        working-directory: ${{ env.COLLECTION_DIR }}
         run: task test
 
       - name: Build Collection
+        working-directory: ${{ env.COLLECTION_DIR }}
         if: ${{ inputs.run_build }}
         run: task build:notest
 
       - name: Publish Collection
+        working-directory: ${{ env.COLLECTION_DIR }}
         if: ${{ inputs.run_publish }}
         env:
           ANSIBLE_GALAXY_TOKEN: ${{ secrets.ANSIBLE_GALAXY_TOKEN }}
