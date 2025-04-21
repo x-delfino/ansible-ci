@@ -140,6 +140,7 @@ tasks:
     run: when_changed
     cmds:
       - task: validate:role
+        vars: {ROLE: "{{.ROLE}}"}
       - task: validate:tools
         vars: {TOOLS: aar-doc}
       - cmd: aar-doc "./roles/{{.ROLE}}" defaults
