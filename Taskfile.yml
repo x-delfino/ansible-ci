@@ -154,6 +154,7 @@ tasks:
       - task: validate:tools
         vars: {TOOLS: aar-doc}
       - task: validate:role
+        vars: {ROLE: "{{.ROLE}}"}
       - cmd: aar-doc --output-mode replace "./roles/{{.ROLE}}" markdown
     requires:
       vars:
@@ -163,6 +164,7 @@ tasks:
     run: when_changed
     cmds:
       - task: validate:role
+        vars: {ROLE: "{{.ROLE}}"}
       - task: generate:role:defaults
       - task: generate:role:docs
     requires:
