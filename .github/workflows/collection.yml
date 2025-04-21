@@ -76,13 +76,11 @@ jobs:
 
       - name: Set galaxy token
         run: |
-          echo "${{ secrets.GALAXY_API_TOKEN }}" > ~/.ansible/galaxy_token
+          echo "${{ secrets.ANSIBLE_GALAXY_TOKEN }}" > ~/.ansible/galaxy_token
 
       - name: Publish Collection
         working-directory: ${{ env.COLLECTION_PATH }}
         if: ${{ inputs.run_publish }}
-        env:
-          ANSIBLE_GALAXY_TOKEN: ${{ secrets.ANSIBLE_GALAXY_TOKEN }}
         run: task publish:nobuild
 
       - name: Create GitHub Release
