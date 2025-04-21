@@ -94,7 +94,6 @@ tasks:
     cmds:
       - task: validate:tools
         vars: {TOOLS: molecule}
-      - task: validate:role
       - cmd: |
           has_tests=false
           if [ -f "molecule/default/molecule.yml" ]; then
