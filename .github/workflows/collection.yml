@@ -39,8 +39,9 @@ jobs:
 
       - name: Move to namespaced path
         run: |
+          shopt -s dotglob
           mkdir -p ${{ env.COLLECTION_PATH }}
-          mv ./repo ${{ env.COLLECTION_PATH }}
+          mv ./repo/* ${{ env.COLLECTION_PATH }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
