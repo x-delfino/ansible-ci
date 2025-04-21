@@ -74,6 +74,10 @@ jobs:
           name: ${{ env.COLLECTION_ARCHIVE }}
           path: ${{ env.COLLECTION_PATH }}/build/${{ env.COLLECTION_ARCHIVE }}
 
+      - name: Set galaxy token
+        run: |
+          echo "${{ secrets.GALAXY_API_TOKEN }}" > ~/.ansible/galaxy_token
+
       - name: Publish Collection
         working-directory: ${{ env.COLLECTION_PATH }}
         if: ${{ inputs.run_publish }}
