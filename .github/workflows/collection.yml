@@ -80,3 +80,14 @@ jobs:
         env:
           ANSIBLE_GALAXY_TOKEN: ${{ secrets.ANSIBLE_GALAXY_TOKEN }}
         run: task publish:nobuild
+
+      - name: Create GitHub Release
+        if: ${{ inputs.run_publish }}
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          body_path: ${{ env.COLLECTION_PATH }}/CHANGELOG.md
+          files: ${{ env.COLLECTION_PATH }}/build/${{ env.COLLECTION_ARCHIVE }}
