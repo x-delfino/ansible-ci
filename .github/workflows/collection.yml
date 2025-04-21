@@ -24,13 +24,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          path: repo
 
       - name: Read namespace and collection name from galaxy.yml
         id: galaxy
         run: |
-          ns=$(grep '^namespace:' galaxy.yml | awk '{print $2}')
-          coll=$(grep '^name:' galaxy.yml | awk '{print $2}')
-          ver=$(grep '^name:' galaxy.yml | awk '{print $2}')
+          ns=$(grep '^namespace:' ./repo/galaxy.yml | awk '{print $2}')
+          coll=$(grep '^name:' ./repo/galaxy.yml | awk '{print $2}')
+          ver=$(grep '^name:' ./repo/galaxy.yml | awk '{print $2}')
           coll_path="./ansible_collections/$ns/$coll"
           coll_archive="$ns-$coll-$ver.tar.gz"
           echo "COLLECTION_PATH=$coll_path" >> $GITHUB_ENV
@@ -39,7 +40,7 @@ jobs:
       - name: Move to namespaced path
         run: |
           mkdir -p ${{ env.COLLECTION_PATH }}
-          mv . ${{ env.COLLECTION_PATH }}
+          mv ./repo ${{ env.COLLECTION_PATH }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
