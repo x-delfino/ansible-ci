@@ -31,7 +31,7 @@ jobs:
         run: |
           ns=$(grep '^namespace:' ./repo/galaxy.yml | awk '{print $2}')
           coll=$(grep '^name:' ./repo/galaxy.yml | awk '{print $2}')
-          ver=$(grep '^name:' ./repo/galaxy.yml | awk '{print $2}')
+          ver=$(grep '^version:' ./repo/galaxy.yml | awk '{print $2}')
           coll_path="./ansible_collections/$ns/$coll"
           coll_archive="$ns-$coll-$ver.tar.gz"
           echo "COLLECTION_PATH=$coll_path" >> $GITHUB_ENV
