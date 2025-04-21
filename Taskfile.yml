@@ -213,8 +213,8 @@ tasks:
 
   publish:
     cmds:
-      - task: build
-      - task: pubish:nobuild
+      - task: build:notest
+      - task: publish:nobuild
 
   publish:nobuild:
     cmds:
