@@ -10,6 +10,12 @@ name: Ansible Collection CI
       run_build:
         type: boolean
         default: false
+      namespace:
+        type: string
+        required: false
+      collection:
+        type: string
+        required: false
     secrets:
       ANSIBLE_GALAXY_TOKEN:
         required: false
