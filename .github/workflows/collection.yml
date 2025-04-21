@@ -10,12 +10,6 @@ name: Ansible Collection CI
       run_build:
         type: boolean
         default: false
-      namespace:
-        type: string
-        required: true
-      collection:
-        type: string
-        required: true
     secrets:
       ANSIBLE_GALAXY_TOKEN:
         required: false
@@ -26,16 +20,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set working directory
-        run: |
-          namespace="${{ inputs.namespace }}/${{ inputs.collection }}"
-          echo "COLLECTION_DIR=./ansible_collections/$namespace" >> $GITHUB_ENV
-
       - name: Checkout Repo
         uses: actions/checkout@v4
         with:
-          path: ${{ env.COLLECTION_DIR }}
           submodules: recursive
+
+      - name: Read namespace and collection name from galaxy.yml
+        id: galaxy
+        run: |
+          ns=$(grep '^namespace:' galaxy.yml | awk '{print $2}')
+          coll=$(grep '^name:' galaxy.yml | awk '{print $2}')
+          ver=$(grep '^name:' galaxy.yml | awk '{print $2}')
+          coll_path="./ansible_collections/$ns/$coll"
+          coll_archive="$ns-$coll-$ver.tar.gz"
+          echo "COLLECTION_PATH=$coll_path" >> $GITHUB_ENV
+          echo "COLLECTION_ARCHIVE=$coll_archive" >> $GITHUB_ENV
+
+      - name: Move to namespaced path
+        run: |
+          mkdir -p ${{ env.COLLECTION_PATH }}
+          mv . ${{ env.COLLECTION_PATH }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -43,27 +47,33 @@ jobs:
           python-version: '3.10'
 
       - name: Install Python dependencies
-        working-directory: ${{ env.COLLECTION_DIR }}
+        working-directory: ${{ env.COLLECTION_PATH }}
         run: pip install -r './automation/requirements.txt'
 
       - name: Install Task
         uses: arduino/setup-task@v2
 
       - name: Run Lint
-        working-directory: ${{ env.COLLECTION_DIR }}
+        working-directory: ${{ env.COLLECTION_PATH }}
         run: task lint
 
       - name: Run Tests
-        working-directory: ${{ env.COLLECTION_DIR }}
+        working-directory: ${{ env.COLLECTION_PATH }}
         run: task test
 
       - name: Build Collection
-        working-directory: ${{ env.COLLECTION_DIR }}
+        working-directory: ${{ env.COLLECTION_PATH }}
         if: ${{ inputs.run_build }}
         run: task build:notest
 
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.run_build }}
+        with:
+          name: ${{ env.COLLECTION_ARCHIVE }}
+          path: ${{ env.COLLECTION_PATH }}/build/${{ env.COLLECTION_ARCHIVE }}
+
       - name: Publish Collection
-        working-directory: ${{ env.COLLECTION_DIR }}
+        working-directory: ${{ env.COLLECTION_PATH }}
         if: ${{ inputs.run_publish }}
         env:
           ANSIBLE_GALAXY_TOKEN: ${{ secrets.ANSIBLE_GALAXY_TOKEN }}
