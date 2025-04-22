@@ -83,7 +83,27 @@ tasks:
         vars: {TOOLS: molecule ansible-test}
       - task: generate:roles:defaults
       - ansible-test sanity --docker
-      - molecule test --all
+      - cmd: |
+          has_tests=false
+          if [ -f "molecule/default/molecule.yml" ]; then
+            echo "running default scenario for collection"
+            molecule test -s default
+            has_tests=true
+          fi
+
+          for scenario in molecule/*; do
+            name=$(basename "$scenario")
+            [ "$name" = "default" ] && continue
+            if [ -f "$scenario/molecule.yml" ]; then
+              echo "running scenario '$name' for collection"
+              molecule test -s "$name"
+              has_tests=true
+            fi
+          done
+
+          if [ "$has_tests" = false ]; then
+            echo "no molecule scenarios found for collection. Skipping."
+          fi
 
   test:role:
     label: test:role:{{.ROLE}}
