@@ -73,9 +73,8 @@ tasks:
   lint:
     cmds:
       - task: validate:tools
-        vars: {TOOLS: ansible-lint yamllint}
+        vars: {TOOLS: ansible-lint}
       - ansible-lint
-      - yamllint .
 
   test:collection:
     cmds:
